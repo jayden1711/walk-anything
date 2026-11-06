@@ -1,0 +1,19 @@
+# Results, logs and write-ups stay local until the owner approves publishing
+results/
+runs/
+checkpoints/
+wandb/
+*.log
+*.mp4
+# Weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude/worktrees/
