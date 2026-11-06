@@ -1,47 +1,46 @@
 # HANDOFF: walk-anything
-Status: stop point 1 built and tested (local commits on worktree-overnight-stop1, not pushed); trainer running on 5 bodies, unreviewed
-Next: review + push the branch, then stop point 2 (train on the full train split, zero-shot eval on held-out bodies)
+Status: day-1106 branch (local commits, not pushed): KL fix coded + unit tested, symmetry-gait track started, predictive-sampling baseline built; 5-body report in git-ignored results/day-1106/report.md
+Next: owner review. Then: re-run the short KL verification when the GPU is free; residual policy on top of the derived rhythm
 Updated: 2026-11-06
 
-## What exists (stop point 1)
-- `walk_anything/`: spec, text parser, procedural MJCF for 3 families (quadruped / biped / hexapod), validity checker,
-  seeded sampler (200 bodies, stratified train/held-out split), MuJoCo env + multiprocess VecEnv, morphology-token
-  transformer policy, compact PPO, atomic checkpoints, preemptible trainer (`python -m walk_anything.train`).
-- `scripts/`: `make_bodies.py` (writes `results/bodies/`), `batching_study.py` (`sim` and `policy` subcommands),
-  `run_trainer.sh` (the only way to launch the trainer: preemptible gpu-run), `yield_test.sh` (end to end).
-- `tests/`: 19 pytest tests (bodies, policy/checkpoint round trip, yield by SIGUSR1 and by yield file).
-- Venv: `.venv` in the worktree (torch, mujoco, numpy, pyyaml, pytest); listed in THIRD_PARTY.md.
+## What was done today (branch `day-1106`, branched from main)
+1. **KL fix** (`walk_anything/ppo.py`, `configs/default.yaml`): lr 3e-4 -> 1e-4, new `target_kl: 0.02`. The epoch loop stops once the
+   minibatch approx-KL (k3 estimator, now also the logged `kl`) exceeds the target; `opt_steps` and `kl_stopped` are logged.
+   Unit tests: `tests/test_ppo_kl.py`. The old stop1 trainer wrapper was stopped (pid 1388615) and not restarted.
+2. **Symmetry-gait track, first stage** (no learning yet):
+   - `symmetry.py`: detects body symmetries (identity, left-right, front-back, 180 deg) from geometry, then verifies each one
+     numerically (state equivariance of the MuJoCo model + contact-geom match). Outputs leg permutation and joint sign flips.
+   - `cpg.py`: enumerates phase patterns from the leg-permutation group; "primary" = every symmetry kept as a spatio-temporal symmetry.
+   - `gait.py`: open-loop rhythm controller; picks pattern + (period, amplitude, signs) per body on tuning seeds (20000+),
+     separate from the evaluation seeds (10000+).
+   - Not built: the universal residual policy, and the shared circuit-compiler import (zero-step-robots).
+   - Tests: `tests/test_symmetry.py`.
+3. **Predictive-sampling baseline** (`mpc.py`): own implementation of arXiv 2212.00541, CPU only, sim-run. MJPC itself was
+   not used (see THIRD_PARTY.md). It plans with the true model and friction.
+4. **Common eval** (`evalrun.py`, `scripts/eval_arms.py`, `scripts/make_report.py`): same protocol for every arm
+   (fixed forward command, 500 steps, training randomisation). Arms run: zero action, old stop1 PPO checkpoint (read from the
+   overnight worktree), predictive sampling, symmetry rhythm. Output: `results/day-1106/` (git-ignored).
 
-## Verified tonight
-- pytest: all pass (run under sim-run).
-- `scripts/yield_test.sh`: PASS. A normal gpu-run job forced the preemptible trainer to yield, the checkpoint
-  appeared and the trainer exited within a few seconds, and the restart resumed from that checkpoint. It uses a
-  private gpu-run lock dir and a CPU trainer, so it never touched the real GPU lock.
-- 200 bodies generated into `results/bodies/0/` (git-ignored).
-- CPU batching study written to `results/batching/sim.md` (git-ignored). Numbers stay there.
-
-## Decisions taken overnight
-- Fixed a reward blow-up seen in the previous session's smoke run (one quadruped had an absurd episode return):
-  velocity penalties are now clipped and a non-finite state counts as a fall.
-- No `rm` used (per instruction). The yield test leaves its temp dir under `$CLAUDE_JOB_DIR` and its run
-  dirs under `runs/` and `checkpoints/`.
-- Batching GPU study and trainer were queued behind another project's non-preemptible GPU job instead of being
-  forced; see Open.
-- The yield test runs the trainer on CPU with a private lock dir (conservative: no GPU use outside the real lock).
+## Decisions taken
+- Own predictive-sampling implementation instead of building MJPC (conservative: no new build, no checkout, no pinned third party).
+- Treated front-back mirror and 180 deg rotation as part of the symmetry group even though they reverse the travel direction
+  (this is what the symmetric-CPG theory uses for the network); the default pose is not invariant under them (recorded per element).
+- Candidate symmetries limited to the torso-rectangle group; the bodies here are not radial.
+- Rhythm waveform and its parameter grid (3 periods x 2 amplitudes x 2 hip signs x 2 knee signs) were my choice; selection uses
+  tuning seeds only. A sparse, hand-made waveform: treat the arm as a first rhythm-only reference, not a tuned one.
+- Evaluation protocol (command 0.3, 500 steps, 10 episodes; 5 for predictive sampling because it is slow) is my choice for the
+  "same metrics as stop1" request, since stop1 had no eval script. The old checkpoint was evaluated with the same code.
+- CPU budget: another project already ran 4 workers, so I ran only one sim process at a time (MPC, then rhythm), sequentially.
+- No `rm` used. The pytest yield tests left `checkpoints/pytest_yield_*` and `runs/pytest_yield_*` dirs in this worktree (git-ignored).
+- `.venv` in this worktree is a symlink to the overnight worktree's venv (its editable install points there, so scripts run
+  with `PYTHONPATH=.`). Recreate a venv in the main checkout before the overnight worktree is deleted.
 
 ## Open / blocked
-- Left-over test dirs from the yield tests: deleted on 2026-11-06 with the owner's approval.
-- GPU status: see the final section below.
+- **KL verification run not done**: the single <=15 min run under `gpu-run --preemptible` never got the GPU (held by the
+  robot-framing-test server for the whole window; 900 s limit expired while waiting). Only the unit tests verify the fix so far.
+  Command when the GPU is free: `timeout -s TERM 900 scripts/run_trainer.sh --run klfix --workers 2`
+- No further tuning of the brute-force universal policy (per owner).
+- PLAN.md was not changed; docs/symmetry-gait-track.md still needs folding in at the next review.
 
 ## Disk
-Checkpoints are small (policy + optimiser). Usage is logged by the trainer at each save. NUC disk had ~195 GB free
-at the start of the night (limit: keep > 100 GB free).
-
-## GPU status at end of the night
-- The GPU batching study DID complete (it got the GPU after the other job ended): tables in
-  `results/batching/policy.md` and `sim.md` (git-ignored). Takeaway in git-ignored `results/batching/takeaway.md`. `configs/default.yaml` is left unchanged
-  (3 workers, 16 envs/body) as the conservative choice.
-- The preemptible trainer (`scripts/run_trainer.sh --run stop1`) has just acquired the GPU and is running
-  detached (log `runs/stop1_wrapper.log`, metrics `runs/stop1/metrics.jsonl`). It yields to other gpu-run jobs
-  and Quatern and resumes from its checkpoint. Stop it: `pkill -TERM -f 'gpu-run --preemptible'`.
-  Training progress was not reviewed tonight; PPO on the 5 bodies is running, results not assessed.
+Checkpoints are small. Nothing large was added today. NUC disk had well over 100 GB free (limit: keep > 100 GB free).
