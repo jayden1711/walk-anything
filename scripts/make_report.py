@@ -14,7 +14,9 @@ ARMS = [("zero", "zero action (hold standing pose)"),
         ("mpc", "predictive sampling, no training, plans with the true model"),
         ("rhythm", "symmetry-derived rhythm, open loop, tuned per body on tuning seeds"),
         ("rhythm_default", "rhythm, first derived pattern, fixed parameters, no per-body search (control)"),
-        ("residual", "rhythm + learned residual (universal small policy)")]
+        ("residual1", "rhythm + learned residual, training seed 0 (1500 iterations)"),
+        ("residual1_s1", "rhythm + learned residual, training seed 1"),
+        ("residual1_s2", "rhythm + learned residual, training seed 2")]
 SETS = [("stop1", "5 bodies of stop point 1 (train split; PPO and residual were trained on them)"),
         ("train12", "12 train-split bodies (residual trained on them; PPO saw only 5)"),
         ("heldout12", "12 held-out bodies (never used for tuning or training)"),

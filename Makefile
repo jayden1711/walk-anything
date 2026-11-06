@@ -32,7 +32,7 @@ eval-rhythm-default:  ## control: no per-body search
 	for s in $(SETS); do $(SIM) $(PY) scripts/eval_arms.py $$s rhythm_default; done
 
 eval-residual:    ## needs a residual checkpoint dir: make eval-residual RUN=residual1
-	for s in $(SETS); do $(SIM) $(PY) scripts/eval_arms.py $$s residual:checkpoints/$(RUN) --tag residual; done
+	for s in $(SETS); do $(SIM) $(PY) scripts/eval_arms.py $$s residual:checkpoints/$(RUN) --tag $(RUN); done
 
 train-residual:   ## short preemptible run; stop with SIGUSR1/yield file, rerun resumes. make train-residual RUN=residual1
 	PYTHONPATH=. $(HOME)/projects/bin/gpu-run --preemptible --need-mib 2048 --label walk-anything -- \
