@@ -99,15 +99,19 @@ class BodyEnv:
         wcmd = self.cmd[1] * 0.5 / self.T
         r_lin = np.exp(-((vxh - vcmd) ** 2 + vyh**2) / (0.2 * self.vscale) ** 2)
         r_yaw = np.exp(-((wz - wcmd) * self.T / 0.3) ** 2)
-        wxy = d.qvel[3:5] * self.T
+        wxy = np.clip(d.qvel[3:5] * self.T, -5.0, 5.0)
+        vz = float(np.clip(vel_w[2] / self.vscale, -5.0, 5.0))
         r = (1.0 * r_lin + 0.5 * r_yaw + 0.2
              - 0.05 * float(np.mean((tau / self.spec.torque_limit) ** 2))
              - 0.05 * float(np.mean((a - self.prev_a) ** 2))
              - 0.5 * (1 - up)
              - 0.02 * float(wxy @ wxy)
-             - 0.1 * (vel_w[2] / self.vscale) ** 2)
+             - 0.1 * vz**2)
         self.prev_a[:] = a
-        fell = (up < 0.3) or (d.qpos[2] < 0.35 * b.stand_z) or not np.all(np.isfinite(d.qpos))
+        finite = bool(np.all(np.isfinite(d.qpos)) and np.all(np.isfinite(d.qvel)))
+        fell = (up < 0.3) or (d.qpos[2] < 0.35 * b.stand_z) or not finite
+        if not finite or not np.isfinite(r):
+            r = 0.0
         if fell:
             r -= 2.0
         self.ep_ret += r
