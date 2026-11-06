@@ -30,9 +30,7 @@ Updated: 2026-11-06
 - The yield test runs the trainer on CPU with a private lock dir (conservative: no GPU use outside the real lock).
 
 ## Open / blocked
-- Left-over git-ignored dirs from the previous session's tests, to delete by hand
-  (`rm -rf runs/pytest_yield_* checkpoints/pytest_yield_* runs/smoke checkpoints/smoke`), plus `runs/yieldtest_*`
-  and `checkpoints/yieldtest_*` from tonight's yield test.
+- Left-over test dirs from the yield tests: deleted on 2026-11-06 with the owner's approval.
 - GPU status: see the final section below.
 
 ## Disk
@@ -41,10 +39,8 @@ at the start of the night (limit: keep > 100 GB free).
 
 ## GPU status at end of the night
 - The GPU batching study DID complete (it got the GPU after the other job ended): tables in
-  `results/batching/policy.md` and `sim.md` (git-ignored). Takeaway, no numbers: GPU policy inference and the
-  update are far cheaper than CPU sim, checkpoint saves are far under the 20 s rule, so the CPU sim is the
-  bottleneck and more envs per worker helps. `configs/default.yaml` is left unchanged (3 workers, 16 envs/body)
-  as the conservative choice.
+  `results/batching/policy.md` and `sim.md` (git-ignored). Takeaway in git-ignored `results/batching/takeaway.md`. `configs/default.yaml` is left unchanged
+  (3 workers, 16 envs/body) as the conservative choice.
 - The preemptible trainer (`scripts/run_trainer.sh --run stop1`) has just acquired the GPU and is running
   detached (log `runs/stop1_wrapper.log`, metrics `runs/stop1/metrics.jsonl`). It yields to other gpu-run jobs
   and Quatern and resumes from its checkpoint. Stop it: `pkill -TERM -f 'gpu-run --preemptible'`.
