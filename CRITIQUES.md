@@ -19,14 +19,14 @@ Result files (all git-ignored, each JSON carries seeds, settings, date, git revi
    generation. The train and held-out lists are fixed index rules written before evaluation (`walk_anything/bodysets.py`: the first 4 bodies per
    family of each split). To be published together with the sampler seed. [C] The validity checker rejects bodies that cannot stand; the number of
    rejected draws per body is recorded, and the surviving distribution is not "all possible robots".
-3. **"The test set was written by the authors."** [C] The `external` set (`bodies_external/*.txt`) currently holds seven descriptions written by the AI
+3. **"The test set was written by the authors."** [C] The `placeholder` set (`bodies_placeholder/*.txt`) currently holds seven descriptions written by the AI
    assistant from memory of public robot sizes or invented size classes; each file says so and is marked `[verify]`. They are placeholders, not an independent
    test set. [B] Not run: collect descriptions from other people (or copy published robot descriptions with the source cited), drop them into
-   `bodies_external/` with `source`/`author` headers, run `make eval-*` again. The set is evaluated and reported separately and not mixed into the
+   `bodies_placeholder/` with `source`/`author` headers, run `make eval-*` again. The set is evaluated and reported separately and not mixed into the
    held-out numbers. Descriptions must fit the rule-based grammar (`walk_anything/parse.py`) until an LLM front-end exists, which limits how free-form
    they can be [C].
 4. **"Train/test leakage."** [A] Reports are split into `stop1` and `train12` (in-sample for the residual; PPO saw only the five stop1 bodies),
-   `heldout12` (never used for training or rhythm selection), and `external`. Only `heldout12` and `external` support generalisation claims. Rhythm
+   `heldout12` (never used for training or rhythm selection), and `placeholder`. Only `heldout12` supports generalisation claims; `placeholder` holds AI-written descriptions and supports none. Descriptions written by other people will be collected as part of the public post. Rhythm
    selection uses tuning seeds 20000+, evaluation uses 10000+ (`walk_anything/gait.py`, `evalrun.py`).
 5. **"Averages hide the failures."** [A] Per-family tables (quadruped, biped, hexapod) for every arm, with mean, median, and min..max over bodies plus a
    per-body table (`results/round2/report.md`). Bad arms and bad bodies are shown, not removed.

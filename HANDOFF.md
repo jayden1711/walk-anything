@@ -10,9 +10,9 @@ Updated: 2026-11-06
    (`make train-residual RUN=... SEED=...`). The KL early stop is active in these runs (`kl_stopped`, `opt_steps` in `runs/*/metrics.jsonl`),
    which verifies the day-1106 fix beyond unit tests.
 2. **Per-family evaluation of every arm** (zero, old PPO, predictive sampling, rhythm, rhythm_default control, rhythm+residual) on stop1, train12,
-   heldout12 and external sets: `scripts/eval_arms.py`, `scripts/make_report.py`, `walk_anything/bodysets.py`. Fall rate, walk rate (no fall and
+   heldout12 and placeholder sets: `scripts/eval_arms.py`, `scripts/make_report.py`, `walk_anything/bodysets.py`. Fall rate, walk rate (no fall and
    speed >= half the command) and forward speed always together. Output: `results/round2/report.md`.
-3. **Bodies**: 12 train-split and 12 held-out generated bodies (fixed index rules in `bodysets.py`); external set `bodies_external/` = 7 placeholder
+3. **Bodies**: 12 train-split and 12 held-out generated bodies (fixed index rules in `bodysets.py`); placeholder set `bodies_placeholder/` = 7 placeholder
    descriptions **written by the AI assistant, not by other people**, flagged `[verify]`. Fixed a parser bug found while writing them (bare numbers
    such as "12 kg" after "segments ..." were read as segment lengths; `parse.py`, tested).
 4. **Docs**: `CRITIQUES.md` (22 items, each A/B/C), README disclosure, simulation statement and related work (`[verify]` marks), PLAN section 9,

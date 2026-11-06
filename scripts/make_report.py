@@ -20,7 +20,7 @@ ARMS = [("zero", "zero action (hold standing pose)"),
 SETS = [("stop1", "5 bodies of stop point 1 (train split; PPO and residual were trained on them)"),
         ("train12", "12 train-split bodies (residual trained on them; PPO saw only 5)"),
         ("heldout12", "12 held-out bodies (never used for tuning or training)"),
-        ("external", "external-description bodies (see bodies_external/)")]
+        ("placeholder", "placeholder descriptions written by the AI assistant, NOT by other people (see bodies_placeholder/); no generalisation claim")]
 FAMS = ["quadruped", "biped", "hexapod"]
 
 

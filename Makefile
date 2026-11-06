@@ -5,7 +5,7 @@ PY      = .venv/bin/python
 SIM     = $(HOME)/projects/bin/sim-run
 SEED    = 0
 ITERS   = 1500
-SETS    = stop1 train12 heldout12 external
+SETS    = stop1 train12 heldout12 placeholder
 PPO_OLD = results/round2/ckpt/ppo_old   # stop1 checkpoint (iteration 74571), copied from the overnight run
 
 .PHONY: bodies gaits eval-zero eval-ppo eval-mpc eval-rhythm eval-residual train-residual report test

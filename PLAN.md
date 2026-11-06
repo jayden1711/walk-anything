@@ -140,7 +140,7 @@ Python deps (torch, numpy, mujoco, pyyaml, pytest) go into a local `.venv`, list
 3. Evaluation (same protocol for every arm: zero action, old PPO, predictive sampling, rhythm, rhythm + residual): fall rate, walk rate and forward
    speed **per body family**, on train bodies, held-out bodies and external descriptions. Fall rate is never reported without forward speed.
 4. Body sets: generated bodies are a pure function of (sampler seed, index); the held-out list is a fixed rule (`bodysets.py`). The external set is
-   meant to hold descriptions written by other people (`bodies_external/`); the current files are placeholders written by the AI assistant.
+   meant to hold descriptions written by other people (`bodies_placeholder/`); the current files are placeholders written by the AI assistant.
 5. Still not done: import of the shared circuit compiler (zero-step-robots), an LLM text front-end, terrain, any real hardware.
 
 Related work is listed in README.md; see CRITIQUES.md for the open criticisms and how each one is handled.
