@@ -55,5 +55,5 @@ def make_body(seed: int, index: int, cfg: ValidityConfig | None = None, max_trie
 
 
 def split_of(index: int) -> str:
-    """Stratified by family (index % 3): every 4th body of each family is held out for zero-shot evaluation."""
-    return "heldout" if (index // 3) % 4 == 3 else "train"
+    """Stratified by family (index % 3): every 4th body of each family is in the TUNING split (not used to train PPO or the residual, but used by the rhythm search; NOT a held-out set, see heldout.py)."""
+    return "tuning" if (index // 3) % 4 == 3 else "train"

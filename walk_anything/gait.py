@@ -61,6 +61,8 @@ def select_gait_cached(spec: BodySpec, cache_dir, log=None):
     """select_gait with a JSON cache keyed by body name; returns (controller, gait dict)."""
     import json
     import pathlib
+    from .heldout import refuse_heldout
+    refuse_heldout([spec], "per-body gait selection")
     f = pathlib.Path(cache_dir) / f"{spec.name}.json"
     if f.exists():
         d = json.load(open(f))["selected"]
@@ -81,6 +83,8 @@ GRID = dict(period_T=(3.0, 4.5, 6.5), amp=(0.5, 1.0), hip_sign=(1.0, -1.0), knee
 
 def select_gait(spec: BodySpec, n_tune: int = 3, max_patterns: int = 12, log=None):
     """Best (pattern, rhythm parameters) for this body on the tuning seeds. Returns (controller, table)."""
+    from .heldout import refuse_heldout
+    refuse_heldout([spec], "per-body gait search")
     pats = body_patterns(spec)[:max_patterns]
     table = []
     for p in pats:

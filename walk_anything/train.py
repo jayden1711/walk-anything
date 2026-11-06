@@ -71,6 +71,8 @@ def main(argv=None):
     from .spec import J_MAX
 
     specs_body = [make_body(cfg["bodies"]["seed"], i)[0] for i in cfg["bodies"]["indices"]]
+    from .heldout import refuse_heldout
+    refuse_heldout(specs_body, "training")
     epb = cfg["envs_per_body"]
     specs = [s for s in specs_body for _ in range(epb)]
     gaits, jdim, mkw = None, JOINT_DIM, {}

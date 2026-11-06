@@ -1,7 +1,7 @@
-"""Collect results/round2/<set>/<arm>.json into results/round2/report.md (git-ignored): per body family, every arm.
+"""Collect <root>/<set>/<arm>.json (or <root>/<arm>.json for heldout_v2) into <root>/report.md (git-ignored): per body family, every arm.
 Per family: number of bodies and episodes, fall rate, walk rate (no fall and speed >= WALK_FRAC x commanded), forward speed.
 Fall rate is never shown without forward speed. Spread = median and min..max across bodies.
-Usage: python scripts/make_report.py [results/round2]
+Usage: python scripts/make_report.py [results/round2]      (fresh held-out: python scripts/make_report.py results/heldout_v2)
 """
 import json
 import pathlib
@@ -16,27 +16,31 @@ ARMS = [("zero", "zero action (hold standing pose)"),
         ("rhythm_default", "rhythm, first derived pattern, fixed parameters, no per-body search (control)"),
         ("residual1", "rhythm + learned residual, training seed 0 (1500 iterations)"),
         ("residual1_s1", "rhythm + learned residual, training seed 1"),
-        ("residual1_s2", "rhythm + learned residual, training seed 2")]
+        ("residual1_s2", "rhythm + learned residual, training seed 2")] + \
+       [(f"residual1_s{n}", f"rhythm + learned residual, training seed {n}") for n in range(3, 10)]
 SETS = [("stop1", "5 bodies of stop point 1 (train split; PPO and residual were trained on them)"),
         ("train12", "12 train-split bodies (residual trained on them; PPO saw only 5)"),
-        ("heldout12", "12 held-out bodies (first 4 per family of the held-out split; never used to train PPO or the residual; the per-body rhythm search WAS run on each of them)"),
-        ("heldout_all", "all 48 held-out bodies of the 200 (same rule as heldout12 for training and rhythm search)"),
+        ("tuning12", "12 TUNING bodies (first 4 per family of the tuning split; not used to train PPO or the residual, but the per-body rhythm search WAS run on each of them: not held out)"),
+        ("tuning48", "all 48 TUNING bodies of the 200 (same rule; the rhythm search was run on each: not held out)"),
+        ("heldout_v2", "48 fresh HELD-OUT bodies (locked manifest, sha256 in README): no tuning, search or training touched them; arms: zero, old PPO, MPC, rhythm_default, residual on the default rhythm"),
         ("placeholder", "placeholder descriptions written by the AI assistant, NOT by other people (see bodies_placeholder/); no generalisation claim")]
 FAMS = ["quadruped", "biped", "hexapod"]
 
 
 def load(set_, tag):
-    f = root / set_ / f"{tag}.json"
-    if not f.exists() and set_ == "placeholder":  # results made before the rename were written to external/
-        f = root / "external" / f"{tag}.json"
-    return json.load(open(f)) if f.exists() else None
+    for f in (root / set_ / f"{tag}.json", root / f"{tag}.json"):
+        if f.exists():
+            d = json.load(open(f))
+            if d["meta"]["set"] == set_:
+                return d
+    return None
 
 
 def fmt(v):
     return f"{v:+.3f}"
 
 
-lines = ["# round2 report (simulation only)", "",
+lines = [f"# {root.name} report (simulation only)", "",
          "Fixed forward command, 500 control steps (10 s), same randomisation as training, env seeds 10000+k identical for every arm.",
          "fall = fraction of episodes that fell. walk = no fall AND mean forward speed >= 0.5 x commanded speed (our threshold).",
          "speed = mean forward speed in m/s over the episode (including the steps before a fall, which can be a forward lunge; the last column uses non-fallen episodes only) (nd = divided by sqrt(g h), h = standing height). Commanded: 0.3 nd.",
@@ -46,6 +50,8 @@ for set_, desc in SETS:
     if not present:
         continue
     lines += [f"## {set_}: {desc}", ""]
+    if set_ == "heldout_v2":
+        lines += ["In this set every residual1* row is the residual policy applied on the fixed default rhythm (arm residual_default), not on a per-body tuned rhythm.", ""]
     for fam in FAMS:
         rows = []
         for tag, d, data in present:

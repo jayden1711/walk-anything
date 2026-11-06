@@ -56,8 +56,9 @@ is the same for all families, and thresholds are config values, recorded alongsi
 - **200 bodies**: seeded sampler over the three families (roughly balanced), rejection-sampled through the
   validity checker. Deterministic from `(seed, index)`, so the dataset is reproducible and only the generator
   is committed. Materialised specs go in git-ignored `results/bodies/`.
-- Fixed split: train / held-out, stratified by family. The held-out bodies are never used for training
-  decisions; they are for zero-shot evaluation.
+- Fixed split: train / tuning, stratified by family. The tuning bodies are not used to train PPO or the residual, but the per-body rhythm search was run
+  on them, so they are NOT held out. A separate fresh held-out set (`heldout_v2`, 48 bodies, locked manifest with a recorded SHA-256, section 9) is the only
+  set for generalisation claims.
 
 ## 2. Simulator
 **MuJoCo (Apache-2.0), CPU**, driven by ≤4 worker processes at one thread each (NUC rules), nice 10 via
@@ -78,7 +79,7 @@ the batching study shows the sim dominating; it is *not* in stop point 1.
   *not* used; global normalisation only). Randomisation: friction, push disturbances (small mass noise: planned, not implemented).
 - **Stop point 1 training scope**: PPO on **5 bodies** (2 quadrupeds, 2 bipeds, 1 hexapod) from the train
   split, to prove the loop, the yield contract and the batching choices. Training on all train bodies and
-  zero-shot evaluation on held-out bodies is stop point 2.
+  zero-shot evaluation on the fresh held-out set is stop point 2.
 
 ## 4. Always-on trainer: yield, checkpoints, disk
 - Launch: `~/projects/bin/gpu-run --preemptible --need-mib <N> --label walk-anything -- python -m walk_anything.train ...`
@@ -120,7 +121,7 @@ Python deps (torch, numpy, mujoco, pyyaml, pytest) go into a local `.venv`, list
 
 ## 7. Stop points
 1. **(this build)** 3 families + validity checker; 200 bodies; PPO on 5 bodies; batching study; yield test.
-2. Train on the full train split; zero-shot evaluation on held-out bodies; failure analysis per family.
+2. Train on the full train split; zero-shot evaluation on the fresh held-out set (`heldout_v2`); failure analysis per family.
 3. Text front-end (LLM → BodySpec), more families / terrain, sim-to-real or Jetson deployment questions.
 
 ## 8. Risks
@@ -138,10 +139,13 @@ Python deps (torch, numpy, mujoco, pyyaml, pytest) go into a local `.venv`, list
    leg phase). The applied action is `clip(rhythm + RES_SCALE * residual)`. Short, preemptible runs (`configs/residual.yaml`,
    `make train-residual`), 1 env worker, no long brute-force training.
 3. Evaluation (same protocol for every arm: zero action, old PPO, predictive sampling, rhythm, rhythm + residual): fall rate, walk rate and forward
-   speed **per body family**, on train bodies, held-out bodies and the placeholder descriptions. Fall rate is never reported without forward speed.
-4. Body sets: generated bodies are a pure function of (sampler seed, index); the held-out list is a fixed rule (`bodysets.py`). The placeholder set
+   speed **per body family**, on train bodies, the tuning set, the fresh held-out set and the placeholder descriptions. Fall rate is never reported without forward speed.
+4. Body sets: generated bodies are a pure function of (sampler seed, index); the tuning list is a fixed rule (`bodysets.py`). The placeholder set
    (`bodies_placeholder/`) is meant to be replaced by descriptions written by other people; the current files are placeholders written by the AI assistant
-   and support no generalisation claim. The held-out list is held out from PPO / residual training only: the per-body rhythm search is also run on held-out bodies.
-5. Still not done: import of the shared circuit compiler (zero-step-robots), an LLM text front-end, terrain, any real hardware.
+   and support no generalisation claim. The tuning list is held out from PPO / residual training only: the per-body rhythm search is also run on tuning bodies.
+5. Fresh held-out set `heldout_v2` (`walk_anything/heldout.py`, `bodies_heldout_v2/manifest.json`, hash in README): 48 bodies, sampler seed 20261106, written once. Nothing
+   tunes on it: `refuse_heldout()` guards gait search and training and `eval_arms.py` allows only search-free arms (zero, PPO, predictive sampling,
+   `rhythm_default`, `residual_default`) with fixed episode counts. Size fixed up front (matches the tuning set, 16 per family).
+6. Still not done: import of the shared circuit compiler (zero-step-robots), an LLM text front-end, terrain, any real hardware.
 
 Related work is listed in README.md; see CRITIQUES.md for the open criticisms and how each one is handled.
