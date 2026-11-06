@@ -15,7 +15,7 @@ Updated: 2026-11-06
 3. **Bodies**: 12 train-split and 12 held-out generated bodies (fixed index rules in `bodysets.py`); placeholder set `bodies_placeholder/` = 7 placeholder
    descriptions **written by the AI assistant, not by other people**, flagged `[verify]`. Fixed a parser bug found while writing them (bare numbers
    such as "12 kg" after "segments ..." were read as segment lengths; `parse.py`, tested).
-4. **Docs**: `CRITIQUES.md` (22 items, each A/B/C), README disclosure, simulation statement and related work (`[verify]` marks), PLAN section 9,
+4. **Docs**: `CRITIQUES.md` (22 items, each A/B/C), README simulation statement and related work (`[verify]` marks), PLAN section 9,
    `Makefile` with one entry point per result.
 
 ## Decisions taken

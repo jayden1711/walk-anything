@@ -11,10 +11,6 @@ The seven descriptions in `bodies_placeholder/` were written by an AI assistant,
 Known holes and how each is handled: [CRITIQUES.md](CRITIQUES.md). Results are not stored in git; every result has a one-command
 entry point in the [Makefile](Makefile) and is written to a local, git-ignored `results/` with its seeds, settings and date.
 
-## Disclosure
-The author is an NVIDIA intern until 2026-11-13 (this work was done in that period) and founded Quatern. Development runs on a shared RTX 5080 machine; this project is not an
-NVIDIA product and nothing here has been reviewed or endorsed by NVIDIA or Quatern.
-
 ## Related work
 Cited where used; items marked [verify] were written from memory without web access and need a check before publication.
 - Symmetric CPG theory: Golubitsky, Stewart, Buono, Collins, "Symmetry in locomotor central pattern generators and animal gaits", Nature 401:693-695 (1999).
