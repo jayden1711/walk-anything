@@ -19,13 +19,16 @@ ARMS = [("zero", "zero action (hold standing pose)"),
         ("residual1_s2", "rhythm + learned residual, training seed 2")]
 SETS = [("stop1", "5 bodies of stop point 1 (train split; PPO and residual were trained on them)"),
         ("train12", "12 train-split bodies (residual trained on them; PPO saw only 5)"),
-        ("heldout12", "12 held-out bodies (never used for tuning or training)"),
+        ("heldout12", "12 held-out bodies (first 4 per family of the held-out split; never used to train PPO or the residual; the per-body rhythm search WAS run on each of them)"),
+        ("heldout_all", "all 48 held-out bodies of the 200 (same rule as heldout12 for training and rhythm search)"),
         ("placeholder", "placeholder descriptions written by the AI assistant, NOT by other people (see bodies_placeholder/); no generalisation claim")]
 FAMS = ["quadruped", "biped", "hexapod"]
 
 
 def load(set_, tag):
     f = root / set_ / f"{tag}.json"
+    if not f.exists() and set_ == "placeholder":  # results made before the rename were written to external/
+        f = root / "external" / f"{tag}.json"
     return json.load(open(f)) if f.exists() else None
 
 
@@ -36,7 +39,7 @@ def fmt(v):
 lines = ["# round2 report (simulation only)", "",
          "Fixed forward command, 500 control steps (10 s), same randomisation as training, env seeds 10000+k identical for every arm.",
          "fall = fraction of episodes that fell. walk = no fall AND mean forward speed >= 0.5 x commanded speed (our threshold).",
-         "speed = mean forward speed in m/s over the episode (nd = divided by sqrt(g h), h = standing height). Commanded: 0.3 nd.",
+         "speed = mean forward speed in m/s over the episode (including the steps before a fall, which can be a forward lunge; the last column uses non-fallen episodes only) (nd = divided by sqrt(g h), h = standing height). Commanded: 0.3 nd.",
          "Spread columns: median and min..max over bodies of the per-body mean. Bodies listed in the per-body tables.", ""]
 for set_, desc in SETS:
     present = [(t, d, load(set_, t)) for t, d in ARMS if load(set_, t)]
@@ -54,12 +57,13 @@ for set_, desc in SETS:
             walk = [b["walk_rate"] for b in bs]
             sp = [b["speed"] for b in bs]
             nd = [b["speed_nd"] for b in bs]
+            nf = [e["speed"] for b in bs for e in b["episodes"] if not e["fell"]]
             rows.append(f"| {tag} | {len(bs)} | {eps} | {st.mean(fall):.2f} | {st.median(fall):.2f} ({min(fall):.2f}..{max(fall):.2f}) | "
-                        f"{st.mean(walk):.2f} | {fmt(st.mean(sp))} | {fmt(st.median(sp))} ({fmt(min(sp))}..{fmt(max(sp))}) | {fmt(st.mean(nd))} |")
+                        f"{st.mean(walk):.2f} | {fmt(st.mean(sp))} | {fmt(st.median(sp))} ({fmt(min(sp))}..{fmt(max(sp))}) | {fmt(st.mean(nd))} | {fmt(st.mean(nf)) if nf else "n/a"} |")
         if rows:
             lines += [f"### {set_} / {fam}", "",
-                      "| arm | bodies | episodes | fall mean | fall median (range) | walk mean | speed m/s mean | speed median (range) | speed nd mean |",
-                      "|---|---|---|---|---|---|---|---|---|"] + rows + [""]
+                      "| arm | bodies | episodes | fall mean | fall median (range) | walk mean | speed m/s mean | speed median (range) | speed nd mean | speed m/s, non-fallen episodes only |",
+                      "|---|---|---|---|---|---|---|---|---|---|"] + rows + [""]
     lines += [f"### {set_} per body", "", "| body | " + " | ".join(f"{t} fall/walk/speed" for t, _, _ in present) + " |",
               "|---|" + "---|" * len(present)]
     names = [b["body"] for b in present[0][2]["bodies"]]
