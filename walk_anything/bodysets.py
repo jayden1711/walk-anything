@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pathlib
+import sys
 
 from .parse import parse_body
 from .sampler import make_body, split_of
@@ -42,6 +43,12 @@ def get(name: str) -> list[BodySpec]:
         return generated(TRAIN12)
     if name == "heldout12":
         return generated(HELDOUT12)
+    if name == "heldout_all":  # every held-out body of the 200 (16 per family), not only the first 4 per family
+        return generated([i for i in range(200) if split_of(i) == "heldout"])
     if name == "placeholder":
-        return [s for s, m in placeholder() if m["valid"]]
+        ps = placeholder()
+        for s, m in ps:
+            if not m["valid"]:
+                print(f"WARNING: placeholder description {s.name} is not a valid body and is excluded; count it as a failure", file=sys.stderr)
+        return [s for s, m in ps if m["valid"]]
     raise KeyError(name)

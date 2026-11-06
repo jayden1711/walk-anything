@@ -1,6 +1,6 @@
 # HANDOFF: walk-anything
-Status: round2 branch (local commits, not pushed): rhythm + residual built and trained (short runs, 3 seeds), all arms evaluated per body family; CRITIQUES.md written; results in git-ignored results/round2/report.md
-Next: owner review of CRITIQUES.md and results/round2/report.md; collect external body descriptions from other people; decide on the per-body rhythm tuning issue
+Status: review branch (local, not pushed): fresh reviewer pass added to CRITIQUES.md; all 48 held-out bodies evaluated (local, git-ignored runs/review_results); headline: no arm walks reliably in simulation
+Next: owner reads CRITIQUES.md "Reviewer pass"; regenerate round2 report.md (stale "external" naming); collect descriptions from other people; decide on residual training length and the per-body rhythm search
 Updated: 2026-11-06
 
 ## What was done (branch `round2`, from main which has day-1106 merged)

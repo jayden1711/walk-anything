@@ -1,6 +1,6 @@
 """Evaluate controller arms on a body set; writes results/round2/<set>/<arm>.json (git-ignored) with settings and metadata.
 Usage (always through sim-run): sim-run .venv/bin/python scripts/eval_arms.py SET ARM [--episodes N]
-SET: stop1 | train12 | heldout12 | placeholder      ARM: zero | ppo:<ckpt dir> | mpc | rhythm | residual:<ckpt dir>
+SET: stop1 | train12 | heldout12 | heldout_all | placeholder      ARM: zero | ppo:<ckpt dir> | mpc | rhythm | residual:<ckpt dir>
 rhythm / residual read the per-body gait cache from scripts/tune_gaits.py. Same env seeds (10000+k) for every arm.
 """
 import argparse
@@ -20,6 +20,7 @@ ap.add_argument("arm")
 ap.add_argument("--episodes", type=int, default=10)
 ap.add_argument("--out", default="results/round2")
 ap.add_argument("--tag", default=None)
+ap.add_argument("--gaits", default="results/round2/gaits")
 a = ap.parse_args()
 
 specs = bodysets.get(a.set)
@@ -49,7 +50,7 @@ for s in specs:
         base, ctrl = RhythmController(s, body_patterns(s)[0], 4.5, 0.6), ZeroController()
     elif a.arm == "rhythm" or a.arm.startswith("residual:"):
         from walk_anything.gait import select_gait_cached
-        base, gait = select_gait_cached(s, "results/round2/gaits")
+        base, gait = select_gait_cached(s, a.gaits)
         if a.arm == "rhythm":
             ctrl = ZeroController()  # zero residual: same code path as residual mode, rhythm alone
         else:
