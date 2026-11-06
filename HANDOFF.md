@@ -1,7 +1,19 @@
 # HANDOFF: walk-anything
-Status: round2 branch (local commits, not pushed): rhythm + residual built and trained (short runs, 3 seeds), all arms evaluated per body family; CRITIQUES.md written; results in git-ignored results/round2/report.md
-Next: owner review of CRITIQUES.md and results/round2/report.md; collect external body descriptions from other people; decide on the per-body rhythm tuning issue
+Status: branch seeds (local, not pushed): seed-variance study of the residual started; seeds 3-9 NOT yet trained (GPU never free for the preemptible trainer), report script ready
+Next: let the queue finish (results/_scratch/train_seeds.sh, background; rerun it if dead), then eval seeds 3-9 on 4 sets, run scripts/seeds_report.py -> results/seeds/report.md
 Updated: 2026-11-06
+
+
+## Seed study (branch seeds)
+- `scripts/seeds_report.py`: per set/family per-seed values, mean/median/range, bootstrap CI over seeds, paired comparison with rhythm/zero/MPC/PPO. Written, tested on seeds 0-2.
+- Training seeds 3-9 queue: `results/_scratch/train_seeds.sh` (gpu-run --preemptible, run names `residual1_s<N>`, resumes; touches results/seeds/done_s<N>). Eval each with
+  `make eval-residual RUN=residual1_s<N>` (tag must be residual1_s<N>; checkpoints are in this worktree's checkpoints/), then `.venv/bin/python scripts/seeds_report.py`.
+- Old `external` results were copied to results/round2/placeholder (rename only; names and settings identical).
+
+## Decisions taken (seed study)
+- GPU was held by robot-framing-test / robot-arena-render and others queued ahead; a preemptible job waits behind them, so no seed was trained in this session. A CPU
+  trial was about 7x slower (about 110 min per seed, 1 thread), so it was dropped rather than run for 13 h; its partial output is in results/_trash/.
+- Seeds 0-2 are the existing runs; seeds 3-9 will use the same config and command, differing only in `--seed`.
 
 ## What was done (branch `round2`, from main which has day-1106 merged)
 1. **Residual on the rhythm** (`env.py` residual mode, `policy.py` `joint_dim`, `train.py` `residual`/`--seed`, `configs/residual.yaml`): the applied
