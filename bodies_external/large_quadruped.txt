@@ -1,0 +1,6 @@
+source: approximate public-spec recollection of a large industrial quadruped (ANYmal class)
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] numbers written from memory, check against the manufacturer's published specs
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+four-legged robot, torso 0.6 x 0.3 x 0.2 m, legs of 2 segments 0.25 m and 0.25 m, total mass 30 kg

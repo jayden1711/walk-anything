@@ -1,0 +1,6 @@
+source: approximate public-spec recollection of a point-foot-style research biped (Cassie class)
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] numbers written from memory, check against the published specs; the real robot has a different leg topology, this is only a rough size/mass match
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+biped, torso 0.25 x 0.3 x 0.3 m, legs of 2 segments 0.5 m and 0.5 m, total mass 33 kg

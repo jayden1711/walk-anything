@@ -1,46 +1,43 @@
 # HANDOFF: walk-anything
-Status: day-1106 branch (local commits, not pushed): KL fix coded + unit tested, symmetry-gait track started, predictive-sampling baseline built; 5-body report in git-ignored results/day-1106/report.md
-Next: owner review. Then: re-run the short KL verification when the GPU is free; residual policy on top of the derived rhythm
+Status: round2 branch (local commits, not pushed): rhythm + residual built and trained (short runs, 3 seeds), all arms evaluated per body family; CRITIQUES.md written; results in git-ignored results/round2/report.md
+Next: owner review of CRITIQUES.md and results/round2/report.md; collect external body descriptions from other people; decide on the per-body rhythm tuning issue
 Updated: 2026-11-06
 
-## What was done today (branch `day-1106`, branched from main)
-1. **KL fix** (`walk_anything/ppo.py`, `configs/default.yaml`): lr 3e-4 -> 1e-4, new `target_kl: 0.02`. The epoch loop stops once the
-   minibatch approx-KL (k3 estimator, now also the logged `kl`) exceeds the target; `opt_steps` and `kl_stopped` are logged.
-   Unit tests: `tests/test_ppo_kl.py`. The old stop1 trainer wrapper was stopped (pid 1388615) and not restarted.
-2. **Symmetry-gait track, first stage** (no learning yet):
-   - `symmetry.py`: detects body symmetries (identity, left-right, front-back, 180 deg) from geometry, then verifies each one
-     numerically (state equivariance of the MuJoCo model + contact-geom match). Outputs leg permutation and joint sign flips.
-   - `cpg.py`: enumerates phase patterns from the leg-permutation group; "primary" = every symmetry kept as a spatio-temporal symmetry.
-   - `gait.py`: open-loop rhythm controller; picks pattern + (period, amplitude, signs) per body on tuning seeds (20000+),
-     separate from the evaluation seeds (10000+).
-   - Not built: the universal residual policy, and the shared circuit-compiler import (zero-step-robots).
-   - Tests: `tests/test_symmetry.py`.
-3. **Predictive-sampling baseline** (`mpc.py`): own implementation of arXiv 2212.00541, CPU only, sim-run. MJPC itself was
-   not used (see THIRD_PARTY.md). It plans with the true model and friction.
-4. **Common eval** (`evalrun.py`, `scripts/eval_arms.py`, `scripts/make_report.py`): same protocol for every arm
-   (fixed forward command, 500 steps, training randomisation). Arms run: zero action, old stop1 PPO checkpoint (read from the
-   overnight worktree), predictive sampling, symmetry rhythm. Output: `results/day-1106/` (git-ignored).
+## What was done (branch `round2`, from main which has day-1106 merged)
+1. **Residual on the rhythm** (`env.py` residual mode, `policy.py` `joint_dim`, `train.py` `residual`/`--seed`, `configs/residual.yaml`): the applied
+   action is `clip(rhythm + RES_SCALE * policy)`; joint tokens get 3 extra features (rhythm action, sin/cos leg phase). Zero residual equals the
+   plain rhythm controller (`tests/test_residual.py`). Trained through `gpu-run --preemptible`, 1 env worker, 1500 iterations per run, seeds 0/1/2
+   (`make train-residual RUN=... SEED=...`). The KL early stop is active in these runs (`kl_stopped`, `opt_steps` in `runs/*/metrics.jsonl`),
+   which verifies the day-1106 fix beyond unit tests.
+2. **Per-family evaluation of every arm** (zero, old PPO, predictive sampling, rhythm, rhythm_default control, rhythm+residual) on stop1, train12,
+   heldout12 and external sets: `scripts/eval_arms.py`, `scripts/make_report.py`, `walk_anything/bodysets.py`. Fall rate, walk rate (no fall and
+   speed >= half the command) and forward speed always together. Output: `results/round2/report.md`.
+3. **Bodies**: 12 train-split and 12 held-out generated bodies (fixed index rules in `bodysets.py`); external set `bodies_external/` = 7 placeholder
+   descriptions **written by the AI assistant, not by other people**, flagged `[verify]`. Fixed a parser bug found while writing them (bare numbers
+   such as "12 kg" after "segments ..." were read as segment lengths; `parse.py`, tested).
+4. **Docs**: `CRITIQUES.md` (22 items, each A/B/C), README disclosure, simulation statement and related work (`[verify]` marks), PLAN section 9,
+   `Makefile` with one entry point per result.
 
 ## Decisions taken
-- Own predictive-sampling implementation instead of building MJPC (conservative: no new build, no checkout, no pinned third party).
-- Treated front-back mirror and 180 deg rotation as part of the symmetry group even though they reverse the travel direction
-  (this is what the symmetric-CPG theory uses for the network); the default pose is not invariant under them (recorded per element).
-- Candidate symmetries limited to the torso-rectangle group; the bodies here are not radial.
-- Rhythm waveform and its parameter grid (3 periods x 2 amplitudes x 2 hip signs x 2 knee signs) were my choice; selection uses
-  tuning seeds only. A sparse, hand-made waveform: treat the arm as a first rhythm-only reference, not a tuned one.
-- Evaluation protocol (command 0.3, 500 steps, 10 episodes; 5 for predictive sampling because it is slow) is my choice for the
-  "same metrics as stop1" request, since stop1 had no eval script. The old checkpoint was evaluated with the same code.
-- CPU budget: another project already ran 4 workers, so I ran only one sim process at a time (MPC, then rhythm), sequentially.
-- No `rm` used. The pytest yield tests left `checkpoints/pytest_yield_*` and `runs/pytest_yield_*` dirs in this worktree (git-ignored).
-- `.venv` in this worktree is a symlink to the overnight worktree's venv (its editable install points there, so scripts run
-  with `PYTHONPATH=.`). Recreate a venv in the main checkout before the overnight worktree is deleted.
+- Residual runs use 1 env worker (owner rule: 1 sim process of my own while humanoid-on-a-chip sims run; none were running when I checked, but 1 worker
+  is the conservative choice and is recorded in `configs/residual.yaml`). Runs are short (1500 iterations); no long brute-force training.
+- Residual trained on 12 train-split bodies (4 per family) instead of the 5 of stop1, so that held-out generalisation can be reported; rhythm per body is
+  taken from the gait cache (grid search on tuning seeds 20000+), exactly as in day-1106.
+- Walk threshold (half the commanded speed) is my choice; raw per-episode speeds are in the JSON.
+- Predictive sampling kept at 5 episodes per body; other arms 10.
+- Old PPO arm = frozen copy of the stop1 checkpoint (iteration 74571) at `results/round2/ckpt/ppo_old` (git-ignored).
+- External descriptions: no web access to cite real specs and the owner asked for descriptions by other people, which I cannot produce. I wrote clearly
+  labelled placeholders so the pipeline is tested, and did not use them for any generalisation claim.
+- Related work: cited only items relevant to this repo. PicoGPT, vla.cpp, Hirundo / CrowdStrike / Booz Allen are not related to this repo and are not cited.
+  RoboStriker (2601.22517) and the MIT weight-space post are listed with `[verify relevance]` because I could not check them offline.
+- Added an extra control arm (`rhythm_default`) because the per-body rhythm search contradicts "no training per body" (CRITIQUES item 10).
+- No `rm` used. `.venv` is a symlink to the overnight worktree's venv (scripts run with `PYTHONPATH=.`); `results` and `.venv` added to `.gitignore`.
+  `results/day-1106` was copied (not moved) into this worktree's `results/`.
 
 ## Open / blocked
-- **KL verification run not done**: the single <=15 min run under `gpu-run --preemptible` never got the GPU (held by the
-  robot-framing-test server for the whole window; 900 s limit expired while waiting). Only the unit tests verify the fix so far.
-  Command when the GPU is free: `timeout -s TERM 900 scripts/run_trainer.sh --run klfix --workers 2`
-- No further tuning of the brute-force universal policy (per owner).
-- PLAN.md was not changed; docs/symmetry-gait-track.md still needs folding in at the next review.
+- External test set from other people: not available to me; needs the owner to collect descriptions (format in the existing files).
+- Not done: bootstrap intervals, foot-contact analysis, shared circuit-compiler import, LLM text front-end, terrain.
+- Recreate a venv in the main checkout before the overnight worktree is deleted.
 
 ## Disk
-Checkpoints are small. Nothing large was added today. NUC disk had well over 100 GB free (limit: keep > 100 GB free).
+Checkpoints are about 3 MB per run directory; results/round2 is small. NUC disk was far above the 100 GB free limit.

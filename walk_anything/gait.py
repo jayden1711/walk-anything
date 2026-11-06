@@ -25,6 +25,14 @@ class RhythmController:
         self.spec, self.pattern = spec, pattern
         self.period_T, self.amp, self.hip_sign, self.knee_sign = period_T, amp, hip_sign, knee_sign
 
+    @classmethod
+    def from_dict(cls, spec: BodySpec, d: dict) -> "RhythmController":
+        pat = Pattern(d["pattern"], tuple(d["phases"]), d["m"], d.get("h_size", 0), d.get("k_size", 0), d["primary"])
+        return cls(spec, pat, d["period_T"], d["amp"], d["hip_sign"], d["knee_sign"])
+
+    def phase_angles(self, env) -> np.ndarray:
+        return 2 * np.pi * (env.t * DECIMATION * SIM_DT / self.period_s + self.frac)
+
     def reset(self, env):
         self.jpl = self.spec.joints_per_leg
         self.biped = self.spec.family == "biped"
@@ -32,7 +40,7 @@ class RhythmController:
         self.frac = np.array(self.pattern.phase_fraction())
 
     def act(self, env, obs):
-        th = 2 * np.pi * (env.t * DECIMATION * SIM_DT / self.period_s + self.frac)
+        th = self.phase_angles(env)
         a = np.zeros(env.nj)
         for l, t in enumerate(th):
             hip = self.hip_sign * self.amp * np.sin(t)
@@ -47,6 +55,21 @@ class RhythmController:
     def describe(self) -> dict:
         return dict(pattern=self.pattern.name, phases=self.pattern.phases, m=self.pattern.m, primary=self.pattern.primary,
                     period_T=self.period_T, amp=self.amp, hip_sign=self.hip_sign, knee_sign=self.knee_sign)
+
+
+def select_gait_cached(spec: BodySpec, cache_dir, log=None):
+    """select_gait with a JSON cache keyed by body name; returns (controller, gait dict)."""
+    import json
+    import pathlib
+    f = pathlib.Path(cache_dir) / f"{spec.name}.json"
+    if f.exists():
+        d = json.load(open(f))["selected"]
+        return RhythmController.from_dict(spec, d), d
+    ctrl, table = select_gait(spec, log=log)
+    d = ctrl.describe()
+    f.parent.mkdir(parents=True, exist_ok=True)
+    json.dump(dict(selected=d, tune_seed0=TUNE_SEED0, grid=GRID, table=table), open(f, "w"), indent=1)
+    return ctrl, d
 
 
 def body_patterns(spec: BodySpec) -> list[Pattern]:

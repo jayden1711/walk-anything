@@ -1,0 +1,6 @@
+source: approximate public-spec recollection of a small research quadruped (MIT Mini Cheetah class)
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] numbers written from memory, check against the published specs
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+quadruped, torso 0.38 x 0.20 x 0.10 m, legs of 2 segments 0.21 m and 0.2 m, total mass 9 kg, strong

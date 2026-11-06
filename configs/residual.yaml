@@ -1,0 +1,26 @@
+# Rhythm + learned residual: short runs on 12 train-split bodies. The residual is added to the per-body rhythm (env.RES_SCALE).
+residual: true
+gait_dir: results/round2/gaits    # produced by scripts/tune_gaits.py train12
+bodies:
+  seed: 0
+  indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14]   # = bodysets.TRAIN12
+envs_per_body: 8
+workers: 1                      # 1 sim process while humanoid-on-a-chip sims may run (owner rule)
+horizon: 32
+epochs: 4
+minibatches: 8
+lr: 1.0e-4
+target_kl: 0.02
+gamma: 0.99
+lam: 0.95
+clip: 0.2
+vf_coef: 1.0
+ent_coef: 0.0
+max_grad_norm: 1.0
+model: {d: 64, layers: 2, heads: 4, init_log_std: -1.2}
+ckpt:
+  every_seconds: 60
+  keep_last: 3
+  milestone_every: 500
+  max_milestones: 20
+need_mib: 2048

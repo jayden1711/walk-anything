@@ -1,0 +1,6 @@
+source: approximate public-spec recollection of a small commercial quadruped (Unitree A1 class)
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] numbers written from memory, check against the manufacturer's published specs
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+quadruped, torso 0.37 x 0.19 x 0.09 m, torso mass 6 kg, legs of 2 segments 0.2 m and 0.2 m, total mass 12 kg

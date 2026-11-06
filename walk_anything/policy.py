@@ -9,10 +9,10 @@ from .spec import J_MAX
 
 
 class MorphPolicy(nn.Module):
-    def __init__(self, d: int = 64, layers: int = 2, heads: int = 4, init_log_std: float = -0.7):
+    def __init__(self, d: int = 64, layers: int = 2, heads: int = 4, init_log_std: float = -0.7, joint_dim: int = JOINT_DIM):
         super().__init__()
         self.g_emb = nn.Linear(GLOBAL_DIM, d)
-        self.j_emb = nn.Sequential(nn.Linear(JOINT_DIM, d), nn.ReLU(), nn.Linear(d, d))
+        self.j_emb = nn.Sequential(nn.Linear(joint_dim, d), nn.ReLU(), nn.Linear(d, d))
         layer = nn.TransformerEncoderLayer(d, heads, dim_feedforward=2 * d, dropout=0.0, batch_first=True, norm_first=True, activation="gelu")
         self.enc = nn.TransformerEncoder(layer, layers, enable_nested_tensor=False)
         self.norm = nn.LayerNorm(d)

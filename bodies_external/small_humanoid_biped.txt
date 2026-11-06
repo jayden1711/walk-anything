@@ -1,0 +1,6 @@
+source: rough size class of a small hobby humanoid
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] invented round numbers for a plausible small humanoid, not a specific product
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+humanoid with 0.25 m legs, 2 segments, total mass 3 kg, weak

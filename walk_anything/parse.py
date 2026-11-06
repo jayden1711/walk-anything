@@ -45,7 +45,7 @@ def parse_body(text: str) -> BodySpec:
     if m:
         seg_part = t[m.start():]
         seg_part = re.split(r";|\.\s|\bkg\b", seg_part)[0]
-        vals = re.findall(_NUM + r"\s*(cm|mm|m)?\b", seg_part)
+        vals = re.findall(_NUM + r"\s*(cm|mm|m)\b", seg_part)  # unit required: a bare number is not a length
         if len(vals) >= 2:
             seg_lengths = tuple(_len(v, u) for v, u in vals[:3])
             n_segs = len(seg_lengths)

@@ -1,0 +1,6 @@
+source: rough size class of a research hexapod
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] invented round numbers, not a specific product
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+hexapod, torso 0.6 x 0.3 x 0.1 m, legs of 3 segments 0.1 m, 0.15 m and 0.15 m, total mass 15 kg

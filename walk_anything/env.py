@@ -18,8 +18,16 @@ JOINT_DIM = STATIC_DIM + 3
 V_MAX, W_MAX = 0.4, 0.5  # nondimensional command ranges (x sqrt(g h) and x 0.5 sqrt(g / h))
 
 
+RES_SCALE = 0.5          # residual action units added to the rhythm action (rhythm amplitude is up to 1)
+BASE_FEATS = 3           # extra per-joint token features in residual mode: base action, sin / cos of the leg phase
+
+
 class BodyEnv:
-    def __init__(self, spec: BodySpec, seed: int, randomize: bool = True):
+    """base=None: plain env, the policy action is the whole action. base=<gait controller>: residual mode, the applied
+    action is clip(base(t) + RES_SCALE * a) and joint tokens carry BASE_FEATS extra features."""
+
+    def __init__(self, spec: BodySpec, seed: int, randomize: bool = True, base=None):
+        self.base = base
         self.body = Body(spec)
         self.spec = spec
         self.m = self.body.model
@@ -59,6 +67,8 @@ class BodyEnv:
         self.ep_ret = 0.0
         self.ep_rlin = 0.0
         self._sample_cmd()
+        if self.base is not None:
+            self.base.reset(self)
         return self._obs()
 
     def _sample_cmd(self):
@@ -67,6 +77,8 @@ class BodyEnv:
 
     def step(self, a: np.ndarray):
         m, d, b = self.m, self.d, self.body
+        if self.base is not None:
+            a = self.base.act(self, None) + RES_SCALE * np.asarray(a)
         a = np.clip(a, -1.0, 1.0)
         ctrl = np.clip(b.q0 + ACT_SCALE * a, b.jrange[:, 0], b.jrange[:, 1])
         d.ctrl[:] = ctrl
@@ -137,14 +149,29 @@ class BodyEnv:
         j[: self.nj, STATIC_DIM] = d.qpos[b.qadr] - b.q0
         j[: self.nj, STATIC_DIM + 1] = d.qvel[b.dadr] * self.T * 0.2
         j[: self.nj, STATIC_DIM + 2] = self.prev_a
+        if self.base is not None:
+            jb = np.zeros((J_MAX, BASE_FEATS), np.float32)
+            ph = self.base.phase_angles(self)
+            leg = np.arange(self.nj) // self.base.jpl
+            jb[: self.nj, 0] = self.base.act(self, None)
+            jb[: self.nj, 1], jb[: self.nj, 2] = np.sin(ph[leg]), np.cos(ph[leg])
+            j = np.concatenate([j, jb], 1)
         np.clip(g, -10, 10, out=g)
         np.clip(j, -10, 10, out=j)
         return g, j
 
 
 # ------------------------------------------------------------------------ vectorised
-def _worker(conn, spec_jsons, seeds, randomize):
-    envs = [BodyEnv(BodySpec.from_json(s), sd, randomize) for s, sd in zip(spec_jsons, seeds)]
+def make_base(spec: BodySpec, gait: dict | None):
+    if gait is None:
+        return None
+    from .gait import RhythmController
+    return RhythmController.from_dict(spec, gait)
+
+
+def _worker(conn, spec_jsons, seeds, randomize, gaits):
+    specs = [BodySpec.from_json(s) for s in spec_jsons]
+    envs = [BodyEnv(sp, sd, randomize, make_base(sp, g)) for sp, sd, g in zip(specs, seeds, gaits)]
     try:
         while True:
             cmd, arg = conn.recv()
@@ -171,7 +198,9 @@ def _worker(conn, spec_jsons, seeds, randomize):
 class VecEnv:
     """envs[i] runs the body specs[i]. n_workers=0 runs everything in-process (tests)."""
 
-    def __init__(self, specs: list[BodySpec], n_workers: int = 4, seed: int = 0, randomize: bool = True):
+    def __init__(self, specs: list[BodySpec], n_workers: int = 4, seed: int = 0, randomize: bool = True,
+                 gaits: list[dict | None] | None = None):
+        gaits = gaits or [None] * len(specs)
         self.specs = specs
         self.n = len(specs)
         self.n_workers = min(n_workers, self.n)
@@ -181,7 +210,7 @@ class VecEnv:
         for i, k in enumerate(self.nj):
             self.mask[i, :k] = 1
         if self.n_workers == 0:
-            self.local = [BodyEnv(s, sd, randomize) for s, sd in zip(specs, seeds)]
+            self.local = [BodyEnv(s, sd, randomize, make_base(s, g)) for s, sd, g in zip(specs, seeds, gaits)]
             self.groups = []
             return
         self.local = None
@@ -190,7 +219,7 @@ class VecEnv:
         self.conns, self.procs = [], []
         for idx in self.groups:
             a, b = ctx.Pipe()
-            p = ctx.Process(target=_worker, args=(b, [specs[i].to_json() for i in idx], [seeds[i] for i in idx], randomize), daemon=True)
+            p = ctx.Process(target=_worker, args=(b, [specs[i].to_json() for i in idx], [seeds[i] for i in idx], randomize, [gaits[i] for i in idx]), daemon=True)
             p.start()
             b.close()
             self.conns.append(a)

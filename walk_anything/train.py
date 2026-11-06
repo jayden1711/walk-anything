@@ -54,6 +54,7 @@ def main(argv=None):
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--force-config", action="store_true", help="resume even if the config hash differs")
+    ap.add_argument("--seed", type=int, default=0, help="env + torch seed for a fresh start (0 = the original stop1 seeds)")
     a = ap.parse_args(argv)
 
     Y = Yield()  # handlers first: a signal during start-up must not kill us before we can save
@@ -65,14 +66,20 @@ def main(argv=None):
     rundir = pathlib.Path("runs") / a.run
     rundir.mkdir(parents=True, exist_ok=True)
 
-    from .env import VecEnv, GLOBAL_DIM, JOINT_DIM
+    from .env import VecEnv, GLOBAL_DIM, JOINT_DIM, BASE_FEATS
     from .sampler import make_body
     from .spec import J_MAX
 
     specs_body = [make_body(cfg["bodies"]["seed"], i)[0] for i in cfg["bodies"]["indices"]]
     epb = cfg["envs_per_body"]
     specs = [s for s in specs_body for _ in range(epb)]
-    venv = VecEnv(specs, n_workers=cfg["workers"], seed=1234)  # workers spawn before CUDA is touched
+    gaits, jdim, mkw = None, JOINT_DIM, {}
+    if cfg.get("residual"):  # residual mode: per-body rhythm from the gait cache (scripts/tune_gaits.py), policy adds a correction
+        gpath = pathlib.Path(cfg["gait_dir"])
+        gaits_body = [json.load(open(gpath / f"{s.name}.json"))["selected"] for s in specs_body]
+        gaits = [g for g in gaits_body for _ in range(epb)]
+        jdim, mkw = JOINT_DIM + BASE_FEATS, dict(joint_dim=JOINT_DIM + BASE_FEATS)
+    venv = VecEnv(specs, n_workers=cfg["workers"], seed=1234 + a.seed, gaits=gaits)  # workers spawn before CUDA is touched
 
     import torch
     from . import ckpt as C
@@ -80,8 +87,9 @@ def main(argv=None):
     from .ppo import Rollout, gae, update
 
     torch.set_num_threads(1)
+    torch.manual_seed(a.seed)
     dev = torch.device(a.device)
-    policy = MorphPolicy(**cfg["model"]).to(dev)
+    policy = MorphPolicy(**cfg["model"], **mkw).to(dev)
     opt = torch.optim.Adam(policy.parameters(), lr=cfg["lr"])
     N, T = venv.n, cfg["horizon"]
     mask = torch.as_tensor(venv.mask, device=dev)
@@ -115,7 +123,7 @@ def main(argv=None):
         last_saved_it = state["iteration"]
         log(f"checkpoint {path.name} ({reason}) saved in {time.time() - t0:.2f}s; dir {C.dir_size_mb(ckdir):.1f} MB")
 
-    ro = Rollout(T, N, GLOBAL_DIM, JOINT_DIM, J_MAX, dev)
+    ro = Rollout(T, N, GLOBAL_DIM, jdim, J_MAX, dev)
     g_np, j_np = venv.reset()
     last_ckpt_t = time.time()
     metrics = open(rundir / "metrics.jsonl", "a")

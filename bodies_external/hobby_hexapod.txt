@@ -1,0 +1,6 @@
+source: rough size class of a hobby hexapod kit
+author: Claude Code (AI assistant), NOT a third party
+verified: no [verify] invented round numbers for a plausible hobby hexapod, not a specific product
+note: placeholder until descriptions written by other people are collected (see CRITIQUES.md)
+
+six-legged robot, three segments per leg, leg length 0.2 m, total mass 2.5 kg
