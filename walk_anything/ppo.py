@@ -36,13 +36,20 @@ def update(policy, opt, ro: Rollout, adv, ret, mask, ret_scale, cfg):
     ret_n = flat(ret) / ret_scale
     stats = dict(pg=0.0, vf=0.0, ent=0.0, kl=0.0, clipfrac=0.0)
     n_mb = cfg["minibatches"]
+    target_kl = cfg.get("target_kl")
     n = 0
-    for _ in range(cfg["epochs"]):
+    stopped = False
+    for ep in range(cfg["epochs"]):
         perm = torch.randperm(B, device=g.device)
         for idx in perm.chunk(n_mb):
             mean, v = policy(g[idx], j[idx], m[idx])
             lp, ent = policy.dist_stats(mean, m[idx], a[idx])
             ratio = (lp - lp_old[idx]).exp()
+            with torch.no_grad():
+                kl_mb = ((ratio - 1) - (lp - lp_old[idx])).mean().item()  # k3 estimate of KL(old || new), >= 0
+            if target_kl is not None and n > 0 and kl_mb > target_kl:
+                stopped = True
+                break
             pg = -torch.min(ratio * adv[idx], ratio.clamp(1 - cfg["clip"], 1 + cfg["clip"]) * adv[idx]).mean()
             vf = 0.5 * (v - ret_n[idx]).pow(2).mean()
             loss = pg + cfg["vf_coef"] * vf - cfg["ent_coef"] * ent.mean()
@@ -54,7 +61,12 @@ def update(policy, opt, ro: Rollout, adv, ret, mask, ret_scale, cfg):
                 stats["pg"] += pg.item()
                 stats["vf"] += vf.item()
                 stats["ent"] += ent.mean().item()
-                stats["kl"] += ((lp_old[idx] - lp).mean()).item()
+                stats["kl"] += kl_mb
                 stats["clipfrac"] += ((ratio - 1).abs() > cfg["clip"]).float().mean().item()
             n += 1
-    return {k: v / n for k, v in stats.items()}
+        if stopped:
+            break
+    out = {k: v / n for k, v in stats.items()}
+    out["opt_steps"] = n
+    out["kl_stopped"] = float(stopped)
+    return out

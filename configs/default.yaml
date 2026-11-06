@@ -7,7 +7,8 @@ workers: 3                      # CPU env processes (hard cap 4 by the NUC rules
 horizon: 32
 epochs: 4
 minibatches: 8
-lr: 3.0e-4
+lr: 1.0e-4                      # was 3e-4: approx-KL 0.05-0.16 and entropy collapse in the first run
+target_kl: 0.02                 # stop the epoch loop once the minibatch approx-KL exceeds this
 gamma: 0.99
 lam: 0.95
 clip: 0.2
