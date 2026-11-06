@@ -19,3 +19,5 @@ __pycache__/
 .claude/worktrees/
 MUJOCO_LOG.TXT
 *.egg-info/
+results
+.venv
