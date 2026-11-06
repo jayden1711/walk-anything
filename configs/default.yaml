@@ -1,0 +1,23 @@
+# Training config for stop point 1 (PPO on 5 bodies). Defaults to be refined by the batching study.
+bodies:
+  seed: 0
+  indices: [0, 3, 1, 4, 2]     # 2 quadrupeds, 2 bipeds, 1 hexapod, all from the train split
+envs_per_body: 16
+workers: 3                      # CPU env processes (hard cap 4 by the NUC rules)
+horizon: 32
+epochs: 4
+minibatches: 8
+lr: 3.0e-4
+gamma: 0.99
+lam: 0.95
+clip: 0.2
+vf_coef: 1.0
+ent_coef: 0.0
+max_grad_norm: 1.0
+model: {d: 64, layers: 2, heads: 4}
+ckpt:
+  every_seconds: 120            # periodic checkpoint so a hard kill loses little
+  keep_last: 3
+  milestone_every: 500          # iterations
+  max_milestones: 20
+need_mib: 2048

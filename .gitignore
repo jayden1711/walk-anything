@@ -17,3 +17,5 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .claude/worktrees/
+MUJOCO_LOG.TXT
+*.egg-info/
