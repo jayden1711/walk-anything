@@ -1,5 +1,5 @@
 # HANDOFF: walk-anything
-Status: stop point 1 code complete in worktree branch worktree-overnight-stop1 (local commits, not pushed); GPU-side items see "Open" below
+Status: stop point 1 built and tested (local commits on worktree-overnight-stop1, not pushed); trainer running on 5 bodies, unreviewed
 Next: review + push the branch, then stop point 2 (train on the full train split, zero-shot eval on held-out bodies)
 Updated: 2026-11-06
 
@@ -40,14 +40,12 @@ Checkpoints are small (policy + optimiser). Usage is logged by the trainer at ea
 at the start of the night (limit: keep > 100 GB free).
 
 ## GPU status at end of the night
-- Another project's (edge-vla-bench) non-preemptible gpu-run job held the GPU lock for the whole session, so
-  no GPU work ran: the GPU half of the batching study (`scripts/batching_study.py policy`, queued under gpu-run
-  with a 3000 s wait; may have timed out) and PPO training on the 5 bodies are NOT done.
-- The preemptible trainer wrapper is running detached and waiting for its turn
-  (`scripts/run_trainer.sh --run stop1`; log `runs/stop1_wrapper.log`, metrics `runs/stop1/metrics.jsonl`).
-  It starts by itself when the GPU frees up and yields to any normal gpu-run job or Quatern.
-  To stop it: `pkill -TERM -f 'gpu-run --preemptible'` (it checkpoints on SIGTERM).
-- To run the GPU batching study by hand: `~/projects/bin/gpu-run --need-mib 3072 --label walk-anything --wait 600 --
-  ~/projects/bin/sim-run .venv/bin/python scripts/batching_study.py policy` (the trainer yields to it).
-- After the study, set final defaults in `configs/default.yaml` from `results/batching/` (current ones are
-  untuned guesses; the CPU study says sim throughput scales with workers up to 4 and larger envs-per-worker).
+- The GPU batching study DID complete (it got the GPU after the other job ended): tables in
+  `results/batching/policy.md` and `sim.md` (git-ignored). Takeaway, no numbers: GPU policy inference and the
+  update are far cheaper than CPU sim, checkpoint saves are far under the 20 s rule, so the CPU sim is the
+  bottleneck and more envs per worker helps. `configs/default.yaml` is left unchanged (3 workers, 16 envs/body)
+  as the conservative choice.
+- The preemptible trainer (`scripts/run_trainer.sh --run stop1`) has just acquired the GPU and is running
+  detached (log `runs/stop1_wrapper.log`, metrics `runs/stop1/metrics.jsonl`). It yields to other gpu-run jobs
+  and Quatern and resumes from its checkpoint. Stop it: `pkill -TERM -f 'gpu-run --preemptible'`.
+  Training progress was not reviewed tonight; PPO on the 5 bodies is running, results not assessed.
