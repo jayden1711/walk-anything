@@ -8,6 +8,11 @@ Early stage; see [PLAN.md](PLAN.md). Code is Apache-2.0 ([LICENSE](LICENSE)). Th
 
 The seven descriptions in `bodies_placeholder/` were written by an AI assistant, not by other people, and support no generalisation claim; descriptions from other people will be collected for the public post.
 
+**Body sets.** `train12` / `stop1`: training bodies. `tuning12` / `tuning48`: the old "held-out" split; the per-body rhythm search was run on it, so it is a TUNING set, not held out.
+`heldout_v2`: 48 fresh bodies (sampler seed 20261106, same sampler and validity rules), written once to `bodies_heldout_v2/manifest.json` (read-only), used only for final evaluation
+(no tuning, gait search, training or debugging; guarded in code, `walk_anything/heldout.py`). Manifest SHA-256:
+`41173bec84dbe54ef99f286592a20693c8a981b1d3ddec1985021c5907eb0c9f`
+
 Known holes and how each is handled: [CRITIQUES.md](CRITIQUES.md). Results are not stored in git; every result has a one-command
 entry point in the [Makefile](Makefile) and is written to a local, git-ignored `results/` with its seeds, settings and date.
 

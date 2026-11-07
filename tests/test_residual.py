@@ -14,7 +14,7 @@ def _gait(spec):
 
 
 def test_body_sets_disjoint_and_split():
-    assert not set(bodysets.TRAIN12) & set(bodysets.HELDOUT12)
+    assert not set(bodysets.TRAIN12) & set(bodysets.TUNING12)
 
 
 def test_parse_ignores_bare_numbers_after_segments():

@@ -58,7 +58,7 @@ def test_sampler_deterministic_and_valid():
 
 
 def test_split_is_stratified():
-    held = [i for i in range(200) if split_of(i) == "heldout"]
+    held = [i for i in range(200) if split_of(i) == "tuning"]
     for k in range(3):
         n = sum(1 for i in held if i % 3 == k)
         assert 15 <= n <= 18
