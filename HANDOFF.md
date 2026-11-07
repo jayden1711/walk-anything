@@ -1,43 +1,52 @@
 # HANDOFF: walk-anything
-Status: review branch (local, not pushed): fresh reviewer pass added to CRITIQUES.md; all 48 held-out bodies evaluated (local, git-ignored runs/review_results); headline: no arm walks reliably in simulation
-Next: owner reads CRITIQUES.md "Reviewer pass"; regenerate round2 report.md (stale "external" naming); collect descriptions from other people; decide on residual training length and the per-body rhythm search
+Status: branch seeds (local, not pushed): old "held-out" split renamed TUNING set; fresh locked held-out set heldout_v2 (guard + tests) built; seeds 3-9 NOT trained (trainer blocked by the shared-disk <100 GB rule), reports cover the seeds that exist
+Next: free disk above 100 GB, then rerun results/_scratch/train_seeds.sh (resumes), `make eval-residual-seeds`, `make eval-heldout`, `make eval-heldout-mpc`, `make eval-heldout-report`, `make seeds-report`, `make report`
 Updated: 2026-11-06
 
-## What was done (branch `round2`, from main which has day-1106 merged)
-1. **Residual on the rhythm** (`env.py` residual mode, `policy.py` `joint_dim`, `train.py` `residual`/`--seed`, `configs/residual.yaml`): the applied
-   action is `clip(rhythm + RES_SCALE * policy)`; joint tokens get 3 extra features (rhythm action, sin/cos leg phase). Zero residual equals the
-   plain rhythm controller (`tests/test_residual.py`). Trained through `gpu-run --preemptible`, 1 env worker, 1500 iterations per run, seeds 0/1/2
-   (`make train-residual RUN=... SEED=...`). The KL early stop is active in these runs (`kl_stopped`, `opt_steps` in `runs/*/metrics.jsonl`),
-   which verifies the day-1106 fix beyond unit tests.
-2. **Per-family evaluation of every arm** (zero, old PPO, predictive sampling, rhythm, rhythm_default control, rhythm+residual) on stop1, train12,
-   heldout12 and placeholder sets: `scripts/eval_arms.py`, `scripts/make_report.py`, `walk_anything/bodysets.py`. Fall rate, walk rate (no fall and
-   speed >= half the command) and forward speed always together. Output: `results/round2/report.md`.
-3. **Bodies**: 12 train-split and 12 held-out generated bodies (fixed index rules in `bodysets.py`); placeholder set `bodies_placeholder/` = 7 placeholder
-   descriptions **written by the AI assistant, not by other people**, flagged `[verify]`. Fixed a parser bug found while writing them (bare numbers
-   such as "12 kg" after "segments ..." were read as segment lengths; `parse.py`, tested).
-4. **Docs**: `CRITIQUES.md` (22 items, each A/B/C), README disclosure, simulation statement and related work (`[verify]` marks), PLAN section 9,
-   `Makefile` with one entry point per result.
+## Owner decisions of 2026-11-06 and where they landed
+1. Tuning set: `tuning12` / `tuning48` (old held-out split; split label `tuning`; `ph_` prefix for placeholder bodies); renamed in code, Makefile, report, CRITIQUES, PLAN, README.
+2. Fresh held-out set `heldout_v2`: 48 bodies (16 per family), sampler seed 20261106, same sampler and validity rules, `bodies_heldout_v2/manifest.json` (chmod a-w), SHA-256 in
+   `walk_anything/heldout.py` and README. Size fixed up front: matches the tuning set, 16 per family, not changed after seeing results. Guard: `refuse_heldout()` in gait
+   search (`select_gait`, `select_gait_cached`) and `train.py`; `eval_arms.py` allows only search-free arms, fixed episodes, never overwrites a complete result.
+   Tests: `tests/test_heldout.py`.
+3. Evaluation of every arm on the held-out set per family (fall rate and speed, CIs over seeds and bodies): `make eval-heldout`, `make eval-heldout-mpc`, `make eval-heldout-report`
+   -> `results/heldout_v2/report.md`. Old tuning set kept and labelled in `results/round2/report.md` and `results/seeds/report.md`.
+4. `make report` rerun; old `external` folder, report and `ext_` gait files moved to `results/_trash/pre_rename/`, placeholder results regenerated under the new names.
+5. `scripts/review_compare.py` kept (docstring, `make compare`); `scripts/review_stats.py` moved to `results/_scratch/` (hard-coded old arms, superseded by `scripts/seeds_report.py`).
+   The yield test's inline heredoc is now `scripts/yield_test_cfg.py`. No repo command relies on an inline heredoc any more.
+6. CRITIQUES.md: R13 to R17 (tuning vs held-out, the guard, hash, arms changed, seed intervals), no numbers. Results: `results/seeds/`, `results/heldout_v2/`.
 
 ## Decisions taken
-- Residual runs use 1 env worker (owner rule: 1 sim process of my own while humanoid-on-a-chip sims run; none were running when I checked, but 1 worker
-  is the conservative choice and is recorded in `configs/residual.yaml`). Runs are short (1500 iterations); no long brute-force training.
-- Residual trained on 12 train-split bodies (4 per family) instead of the 5 of stop1, so that held-out generalisation can be reported; rhythm per body is
-  taken from the gait cache (grid search on tuning seeds 20000+), exactly as in day-1106.
-- Walk threshold (half the commanded speed) is my choice; raw per-episode speeds are in the JSON.
-- Predictive sampling kept at 5 episodes per body; other arms 10.
-- Old PPO arm = frozen copy of the stop1 checkpoint (iteration 74571) at `results/round2/ckpt/ppo_old` (git-ignored).
-- External descriptions: no web access to cite real specs and the owner asked for descriptions by other people, which I cannot produce. I wrote clearly
-  labelled placeholders so the pipeline is tested, and did not use them for any generalisation claim.
-- Related work: cited only items relevant to this repo. PicoGPT, vla.cpp, Hirundo / CrowdStrike / Booz Allen are not related to this repo and are not cited.
-  RoboStriker (2601.22517) and the MIT weight-space post are listed with `[verify relevance]` because I could not check them offline.
-- Added an extra control arm (`rhythm_default`) because the per-body rhythm search contradicts "no training per body" (CRITIQUES item 10).
-- No `rm` used. `.venv` is a symlink to the overnight worktree's venv (scripts run with `PYTHONPATH=.`); `results` and `.venv` added to `.gitignore`.
-  `results/day-1106` was copied (not moved) into this worktree's `results/`.
+- The held-out set may not be searched or tuned on, but `rhythm` and `rhythm+residual` need a per-body gait search. Conservative choice: on `heldout_v2` the arms are zero, old PPO,
+  predictive sampling, `rhythm_default` and `residual_default` (residual policy on the fixed default rhythm). Tuned `rhythm` / `residual` are reported on the tuning set only (CRITIQUES R16).
+  A fair held-out test of tuned rhythms would need a rule fixed on the tuning set and applied unchanged (e.g. one gait per family); not done.
+- Held-out sampler seed 20261106 (the date), episodes 10 per body (5 for predictive sampling, as elsewhere). The held-out manifest is committed (specs only, no results).
+- Seeds 3-9: the queue (`results/_scratch/train_seeds.sh`) was alive but waiting for the GPU (held by robot-framing-test); when it started, the trainer refused to write a checkpoint because the shared disk
+  had 83 GB free (rule: keep > 100 GB). I did not delete anything of other people's to free space and did not bypass the check. Seed 3 reached about 45 iterations without a checkpoint.
+  Reports state how many seeds they contain. Checkpoints for seeds 0-2 were copied (not moved) from the round2 worktree into this worktree's `checkpoints/`.
+- Reports use two-level bootstrap (seeds and bodies, 4000 draws); `scripts/seeds_report.py` rewritten in numpy.
+- One sim process of my own at a time, started only when load < 20 (`results/_scratch/rerun.sh` gates on it, idempotent, chunks under 10 min).
+
+## Seed study (branch seeds)
+- Seeds 0-2 exist; seeds 3-9 queue `results/_scratch/train_seeds.sh` (gpu-run --preemptible, run names `residual1_s<N>`, resumes; touches `results/seeds/done_s<N>`), blocked as above.
+  Check `pgrep -af train_seeds`; do not start a second copy.
+- Eval new seeds: `make eval-residual-seeds`; held-out: `make eval-heldout`.
+
+## Earlier work (branch `round2`, merged to main)
+Residual on the rhythm (`env.py`, `policy.py`, `train.py`, `configs/residual.yaml`), per-family evaluation of every arm (`scripts/eval_arms.py`, `make_report.py`, `bodysets.py`),
+12 train + tuning bodies, placeholder descriptions (7, AI-written, `[verify]`), `CRITIQUES.md`, Makefile with one entry point per result. Residual runs: 1 env worker, 1500 iterations, seeds 0-2.
+Walk threshold (half the commanded speed) is my choice; raw per-episode speeds are in the JSON. Old PPO arm = frozen stop1 checkpoint at `results/round2/ckpt/ppo_old` (git-ignored).
+`.venv` is a symlink to the overnight worktree's venv (scripts run with `PYTHONPATH=.`); recreate a venv in the main checkout before that worktree is deleted.
 
 ## Open / blocked
-- External test set from other people: not available to me; needs the owner to collect descriptions (format in the existing files).
-- Not done: bootstrap intervals, foot-contact analysis, shared circuit-compiler import, LLM text front-end, terrain.
-- Recreate a venv in the main checkout before the overnight worktree is deleted.
+- Seeds 3-9 (disk). Descriptions from other people for the public post (owner to collect). Not done: foot-contact analysis, shared circuit-compiler import, LLM text front-end, terrain, long residual runs.
 
 ## Disk
-Checkpoints are about 3 MB per run directory; results/round2 is small. NUC disk was far above the 100 GB free limit.
+Checkpoints about 3 MB per run directory; results small. NUC disk free was 83 GB at 17:20 on 2026-11-06 (below the 100 GB rule; not caused by this repo, which uses well under 100 MB).
+
+## Run results (2026-11-06, evening)
+- Done: tuning12/tuning48/placeholder re-run under the new names for zero, old PPO, rhythm, rhythm_default, residual seeds 0-2 (MPC on tuning12 and placeholder); `make report`, `make seeds-report`
+  regenerated (`results/round2/report.md`, `results/seeds/report.md`). Old `external`/`heldout12` outputs, `ext_` gait files and logs that name `external` are in `results/_trash/pre_rename/`.
+- Done: `heldout_v2` evaluated once with zero, old PPO, MPC, rhythm_default, residual_default for seeds 0-2: `results/heldout_v2/report.md` (+ `make eval-heldout-report`). Seeds 3-9 missing (disk), so those reports have 3 seeds, not 10.
+- Test suite: all pass except 3 in `tests/test_yield.py`, which fail because the checkpoint disk guard refuses to save at < 100 GB free (85 GB at the time); not related to these changes.
+- Held-out results were read after the run; no arm was re-run, and nothing was tuned on them.
