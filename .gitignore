@@ -21,3 +21,7 @@ MUJOCO_LOG.TXT
 *.egg-info/
 results
 .venv
+CLAUDE.md
+.claude/
+HANDOFF.md
+ORGANIZER.md
