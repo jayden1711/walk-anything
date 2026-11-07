@@ -8,7 +8,7 @@ import shutil
 
 import torch
 
-MIN_FREE_GB = 100
+MIN_FREE_GB = float(os.environ.get("NUC_MIN_FREE_GB", "50"))  # shared NUC floor (NUC_RULES.md)
 
 
 def _name(it: int) -> str:
