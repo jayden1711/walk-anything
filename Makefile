@@ -1,5 +1,6 @@
 # One command per result. Everything writes to the git-ignored results/ (see CLAUDE.md). Simulation only.
 # CPU sims go through sim-run (nice 10, 1 thread); GPU training through gpu-run --preemptible. At most 4 sim processes machine-wide.
+.SHELLFLAGS := -ec   # a failing command inside a recipe's `for` loop must fail the target, not just the last iteration
 export PYTHONPATH := .
 PY      = .venv/bin/python
 SIM     = $(HOME)/projects/bin/sim-run
