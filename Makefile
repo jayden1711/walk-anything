@@ -8,7 +8,9 @@ ITERS   = 1500
 SETS    = stop1 train12 tuning12 placeholder
 ALLSETS = $(SETS) tuning48   # tuning48: all 48 tuning-split bodies (the old 'held-out' bodies, used by the rhythm search; not for mpc)
 SEED_RUNS = residual1 $(foreach n,1 2 3 4 5 6 7 8 9,residual1_s$(n))   # training seeds 0..9
-HELD    = heldout_v2   # locked fresh held-out set (final evaluation only; see README and walk_anything/heldout.py)
+# checkpoint dir of a seed run: the CPU run (residual1_s<N>_cpu) when results/seeds/done_s<N> says "cpu" (it finished first), else the GPU run
+CKDIR   = checkpoints/$(1)$(shell grep -qs cpu results/seeds/done_s$(patsubst residual1_s%,%,$(1)) && echo _cpu)
+HELD    = heldout_v2  # locked fresh held-out set (final evaluation only; see README and walk_anything/heldout.py)
 PPO_OLD = results/round2/ckpt/ppo_old   # stop1 checkpoint (iteration 74571), copied from the overnight run
 
 .PHONY: bodies gaits eval-zero eval-ppo eval-mpc eval-rhythm eval-rhythm-default eval-residual eval-residual-seeds train-residual report seeds-report compare heldout-bodies eval-heldout eval-heldout-mpc eval-heldout-report test
@@ -35,7 +37,7 @@ eval-rhythm-default:  ## control: no per-body search
 	for s in $(ALLSETS); do $(SIM) $(PY) scripts/eval_arms.py $$s rhythm_default; done
 
 eval-residual:    ## needs a residual checkpoint dir: make eval-residual RUN=residual1_s3
-	for s in $(ALLSETS); do $(SIM) $(PY) scripts/eval_arms.py $$s residual:checkpoints/$(RUN) --tag $(RUN); done
+	for s in $(ALLSETS); do $(SIM) $(PY) scripts/eval_arms.py $$s residual:$(call CKDIR,$(RUN)) --tag $(RUN); done
 
 train-residual:   ## short preemptible run; stop with SIGUSR1/yield file, rerun resumes. make train-residual RUN=residual1
 	PYTHONPATH=. $(HOME)/projects/bin/gpu-run --preemptible --need-mib 2048 --label walk-anything -- \
@@ -60,13 +62,13 @@ eval-heldout:     ## every arm that needs no per-body search, residual over all 
 	$(SIM) $(PY) scripts/eval_arms.py $(HELD) zero
 	$(SIM) $(PY) scripts/eval_arms.py $(HELD) ppo:$(PPO_OLD) --tag ppo_old
 	$(SIM) $(PY) scripts/eval_arms.py $(HELD) rhythm_default
-	for r in $(SEED_RUNS); do $(SIM) $(PY) scripts/eval_arms.py $(HELD) residual_default:checkpoints/$$r --tag $$r; done
+	$(foreach r,$(SEED_RUNS),$(SIM) $(PY) scripts/eval_arms.py $(HELD) residual_default:$(call CKDIR,$(r)) --tag $(r);)
 
 eval-heldout-mpc: ## slow (CPU); 5 episodes per body
 	$(SIM) $(PY) scripts/eval_arms.py $(HELD) mpc
 
-eval-heldout-report:  ## per family fall rate and speed with CIs over seeds and bodies -> results/heldout_v2/report.md
-	$(PY) scripts/seeds_report.py results/heldout_v2 results/heldout_v2 heldout_v2 --residual-label "residual policy on the default rhythm (no per-body search)"
+eval-heldout-report:  ## per family fall rate and speed with CIs over seeds and bodies -> results/heldout_v2/seeds/report.md; all arms -> results/heldout_v2/report.md
+	$(PY) scripts/seeds_report.py results/heldout_v2 results/heldout_v2/seeds heldout_v2 --residual-label "residual policy on the default rhythm (no per-body search)"
 	$(PY) scripts/make_report.py results/heldout_v2
 
 test:

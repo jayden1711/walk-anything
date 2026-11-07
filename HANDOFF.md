@@ -1,7 +1,7 @@
 # HANDOFF: walk-anything
-Status: branch seeds (local, not pushed): old "held-out" split renamed TUNING set; fresh locked held-out set heldout_v2 (guard + tests) built; seeds 3-9 NOT trained (trainer blocked by the shared-disk <100 GB rule), reports cover the seeds that exist
-Next: free disk above 100 GB, then rerun results/_scratch/train_seeds.sh (resumes), `make eval-residual-seeds`, `make eval-heldout`, `make eval-heldout-mpc`, `make eval-heldout-report`, `make seeds-report`, `make report`
-Updated: 2026-11-06
+Status: branch seeds (local, not pushed): all 10 seeds exist (3-9 trained on CPU as residual1_s<N>_cpu, GPU unavailable); tuning and heldout_v2 evaluated for all 10; reports regenerated, CRITIQUES R18-R19
+Next: owner review of results/heldout_v2/seeds/report.md and results/seeds/report.md; stop the stalled GPU queue (results/_scratch/train_seeds.sh, seed 3 waiting) once the owner agrees; goal still unmet, decide next method step
+Updated: 2026-11-07
 
 ## Owner decisions of 2026-11-06 and where they landed
 1. Tuning set: `tuning12` / `tuning48` (old held-out split; split label `tuning`; `ph_` prefix for placeholder bodies); renamed in code, Makefile, report, CRITIQUES, PLAN, README.
@@ -21,9 +21,12 @@ Updated: 2026-11-06
   predictive sampling, `rhythm_default` and `residual_default` (residual policy on the fixed default rhythm). Tuned `rhythm` / `residual` are reported on the tuning set only (CRITIQUES R16).
   A fair held-out test of tuned rhythms would need a rule fixed on the tuning set and applied unchanged (e.g. one gait per family); not done.
 - Held-out sampler seed 20261106 (the date), episodes 10 per body (5 for predictive sampling, as elsewhere). The held-out manifest is committed (specs only, no results).
-- Seeds 3-9: the queue (`results/_scratch/train_seeds.sh`) was alive but waiting for the GPU (held by robot-framing-test); when it started, the trainer refused to write a checkpoint because the shared disk
-  had 83 GB free (rule: keep > 100 GB). I did not delete anything of other people's to free space and did not bypass the check. Seed 3 reached about 45 iterations without a checkpoint.
-  Reports state how many seeds they contain. Checkpoints for seeds 0-2 were copied (not moved) from the round2 worktree into this worktree's `checkpoints/`.
+- Seeds 3-9 (2026-11-07 overnight): trained on CPU, one process at a time through sim-run (`results/_scratch/cpu_seeds.sh`, chunks under 10 min, resumes; seeds in descending order 9..3), run names `residual1_s<N>_cpu`,
+  1500 iterations, same config. `results/seeds/done_s<N>` contains "cpu". The GPU queue (`train_seeds.sh`) stayed stalled at seed 3 (GPU not usable: nvidia-smi "Unknown Error"); seed 3 was
+  therefore also trained on CPU (FORCE_SEED=3, the GPU run was waiting, not training). The first to finish is used (CPU for all of 3-9). The Makefile picks the checkpoint dir from `done_s<N>` (`CKDIR`).
+  Older checkpoints of the CPU runs moved to `results/_trash/ckpt_prune/` (kept: final only, which is also latest). Checkpoints for seeds 0-2 were copied from the round2 worktree.
+  Gotcha: `timeout` must be `--foreground`, else the env worker also gets SIGUSR1 and dies. `eval-residual-seeds` restarts at seed 3 each call and a kill mid-run leaves a partial JSON (one tuning48 file had to be redone).
+- Held-out seeds report now goes to `results/heldout_v2/seeds/report.md` (make_report overwrote it at `results/heldout_v2/report.md`).
 - Reports use two-level bootstrap (seeds and bodies, 4000 draws); `scripts/seeds_report.py` rewritten in numpy.
 - One sim process of my own at a time, started only when load < 20 (`results/_scratch/rerun.sh` gates on it, idempotent, chunks under 10 min).
 
@@ -39,14 +42,14 @@ Walk threshold (half the commanded speed) is my choice; raw per-episode speeds a
 `.venv` is a symlink to the overnight worktree's venv (scripts run with `PYTHONPATH=.`); recreate a venv in the main checkout before that worktree is deleted.
 
 ## Open / blocked
-- Seeds 3-9 (disk). Descriptions from other people for the public post (owner to collect). Not done: foot-contact analysis, shared circuit-compiler import, LLM text front-end, terrain, long residual runs.
+- Seeds are done. Descriptions from other people for the public post (owner to collect). Not done: foot-contact analysis, shared circuit-compiler import, LLM text front-end, terrain, long residual runs.
 
 ## Disk
-Checkpoints about 3 MB per run directory; results small. NUC disk free was 83 GB at 17:20 on 2026-11-06 (below the 100 GB rule; not caused by this repo, which uses well under 100 MB).
+Checkpoints about 1 MB per kept run directory (final only for the CPU runs); results small. NUC disk free was about 87 GB on 2026-11-07 (floor now 50 GB per NUC_RULES; this repo uses well under 100 MB).
 
 ## Run results (2026-11-06, evening)
 - Done: tuning12/tuning48/placeholder re-run under the new names for zero, old PPO, rhythm, rhythm_default, residual seeds 0-2 (MPC on tuning12 and placeholder); `make report`, `make seeds-report`
   regenerated (`results/round2/report.md`, `results/seeds/report.md`). Old `external`/`heldout12` outputs, `ext_` gait files and logs that name `external` are in `results/_trash/pre_rename/`.
-- Done: `heldout_v2` evaluated once with zero, old PPO, MPC, rhythm_default, residual_default for seeds 0-2: `results/heldout_v2/report.md` (+ `make eval-heldout-report`). Seeds 3-9 missing (disk), so those reports have 3 seeds, not 10.
-- Test suite: all pass except 3 in `tests/test_yield.py`, which fail because the checkpoint disk guard refuses to save at < 100 GB free (85 GB at the time); not related to these changes.
+- Done: `heldout_v2` evaluated once with zero, old PPO, MPC, rhythm_default, residual_default for seeds 0-2: `results/heldout_v2/report.md` (+ `make eval-heldout-report`). Update 2026-11-07: seeds 3-9 added, all arms re-reported with 10 seeds (`results/heldout_v2/seeds/report.md`, `results/seeds/report.md`, `results/round2/report.md`); no held-out arm was re-run.
+- Test suite: 3 tests in `tests/test_yield.py` failed on 2026-11-06 under the old 100 GB floor; rerun 2026-11-07: all 40 pass.
 - Held-out results were read after the run; no arm was re-run, and nothing was tuned on them.

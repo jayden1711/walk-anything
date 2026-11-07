@@ -233,3 +233,12 @@ Older sections above were edited only to rename the set; where they say "tuning 
 - **R17 Seeds and intervals.** [A] The held-out and tuning reports give, per family, the residual over all 10 training seeds with a bootstrap over seeds and a
   two-level bootstrap over seeds and bodies; fall rate, forward speed and walk rate are always shown together. [C] Seeds 3 to 9 were trained in a
   background queue behind other jobs on the shared GPU; the report states how many seeds it actually contains.
+- **R18 Seeds 3 to 9 trained on CPU, seeds 0 to 2 on GPU.** [A] All ten seeds now exist and both reports contain all ten. Seeds 3 to 9 ran on CPU (same config, 1500
+  iterations) because the shared GPU was unavailable overnight; the seeds report has a per-seed device table. [C] CPU and GPU float arithmetic differ, so the seeds are
+  not bit-for-bit comparable across devices and a device effect is mixed into the seed spread (3 GPU seeds against 7 CPU seeds); not separated. Seed 3 also had a
+  GPU run queued; the CPU run finished first and is the one used.
+- **R19 The held-out reading, stated plainly.** [A] On the fresh held-out set, per family, the residual policy on the default rhythm does not separate from the default
+  rhythm alone on speed in any family or pooled, nor on fall rate except for bipeds (where the seeds+bodies interval excludes zero in the better direction), and the
+  seeds+bodies intervals are wide because there are 16 bodies per family. One family out of three on one metric is not a general result; no multiplicity correction. [C] The stated goal
+  (one policy makes an unseen body walk without training) is not met by any arm on this set; see `results/heldout_v2/seeds/report.md`. Do not describe the residual as
+  a generalisation result. No arm was re-run and nothing was tuned after reading these results.

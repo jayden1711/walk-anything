@@ -72,6 +72,14 @@ L = ["# Seed variance of rhythm + residual (simulation only)", "",
      "'CI seeds' = percentile bootstrap over training seeds only (bodies fixed). 'CI seeds+bodies' = two-level bootstrap: resample seeds and resample bodies",
      "of the family (4000 draws). With few bodies per family the second interval is the honest one. 'beats' = the seeds+bodies CI excludes 0 in the better direction.",
      "'placeholder' bodies were written by the AI assistant, not by other people: no generalisation claim.", ""]
+def device_of(s):  # seeds 0-2: GPU runs from the earlier work; seeds 3+: results/seeds/done_s<N> holds "cpu" when the CPU run finished first (empty file = GPU run)
+    f = pathlib.Path("results/seeds") / f"done_s{s}"
+    return "GPU" if s < 3 else ("CPU (residual1_s%d_cpu)" % s if f.exists() and "cpu" in f.read_text() else "GPU" if f.exists() else "unknown")
+
+
+L += ["## Training device per seed", "", "Same config, same 1500 iterations; the device changes float arithmetic (and hence the exact trajectory) but not the algorithm. "
+      "Seed 3 had a GPU run queued but the GPU was unavailable, so the CPU run finished first and is the one used; where both would exist the first to finish is used.", "",
+      "| seed | device |", "|---|---|"] + [f"| {s} | {device_of(s)} |" for s, _ in SEEDS] + [""]
 for set_ in SETS:
     seeds = [(s, t, load(set_, t)) for s, t in SEEDS if load(set_, t)]
     if not seeds:
